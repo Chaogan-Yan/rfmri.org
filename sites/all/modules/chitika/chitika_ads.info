@@ -1,0 +1,12 @@
+name = Chitika Ads
+description = Monetize your website with Chitika Ads
+core = 7.x
+package = Chitika
+configure = admin/config/services/chitika_ads
+
+; Information added by Drupal.org packaging script on 2014-03-05
+version = "7.x-1.2"
+core = "7.x"
+project = "chitika"
+datestamp = "1394050405"
+

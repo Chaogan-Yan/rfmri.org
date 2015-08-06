@@ -1,0 +1,20 @@
+<?php
+/**
+ * @file
+ * Drupal Module - Displays ads in blocks.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function chitika_ads_uninstall() {
+  variable_del('chitika_ads_client');
+  variable_del('chitika_ads_password');
+  $settings = db_select('{variable}', 'v')
+    ->fields('v', array('name'))
+    ->condition('name', 'chitika_ads\_ad\_block\_%', 'LIKE')
+    ->execute();
+  foreach ($settings as $variable) {
+    variable_del($variable->name);
+  }
+}

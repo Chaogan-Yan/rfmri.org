@@ -1,0 +1,538 @@
+<?php
+/**
+ * @file
+ * Chitika Ads Drupal Module - Displays ads in blocks.
+ */
+
+// Default variables.
+define('CHITIKA_ADS_CLIENT_DEFAULT_DEFAULT', 'demo');
+define('CHITIKA_ADS_SIZE_DEFAULT', '468x120');
+define('CHITIKA_ADS_CHANNEL_DEFAULT', 'drupal-module');
+define('CHITIKA_ADS_BACKGROUND_COLOR_DEFAULT', '#ffffff');
+define('CHITIKA_ADS_LINK_COLOR_DEFAULT', '#0000CC');
+define('CHITIKA_ADS_TEXT_COLOR_DEFAULT', '#000000');
+define('CHITIKA_ADS_FONT_DEFAULT', '');
+
+// Numbers of blocks available.
+define('CHITIKA_ADS_MAXBLOCKS_DEFAULT', 3);
+
+/**
+ * An array of available ad formats.
+ *
+ * @param string $key
+ *   (optional) size of a requested ad format. EX. '550x250'.
+ *
+ * @return array
+ *   If no key is provided, returns an array of all ad formats.
+ *   If a key is provided, returns the request ad or null if not found.
+ */
+function chitika_ads_ad_formats($key = NULL) {
+  $ads = array(
+    '550x250' => array(
+      'desc' => t('MEGA-Unit'),
+      'width' => 550,
+      'height' => 250),
+    '500x250' => array(
+      'desc' => t('MEGA-Unit'),
+      'width' => 500,
+      'height' => 250),
+    '468x180' => array(
+      'desc' => t('Blog Banner'),
+      'width' => 468,
+      'height' => 180),
+    '468x120' => array(
+      'desc' => t('Blog Banner'),
+      'width' => 468,
+      'height' => 120),
+    '468x90' => array(
+      'desc' => t('Small Blog Banner'),
+      'width' => 468,
+      'height' => 90),
+    '468x60' => array(
+      'desc' => t('Mini Blog Banner'),
+      'width' => 468,
+      'height' => 60),
+    '728x90' => array(
+      'desc' => t('Leaderboard'),
+      'width' => 728,
+      'height' => 90),
+    '120x600' => array(
+      'desc' => t('Skyscraper'),
+      'width' => 120,
+      'height' => 600),
+    '160x600' => array(
+      'desc' => t('Wide Skyscraper'),
+      'width' => 160,
+      'height' => 600),
+    '550x120' => array(
+      'desc' => t('Content Banner'),
+      'width' => 550,
+      'height' => 120),
+    '550x90' => array(
+      'desc' => t('Content Banner'),
+      'width' => 550,
+      'height' => 90),
+    '450x90' => array(
+      'desc' => t('Small Content Banner'),
+      'width' => 450,
+      'height' => 90),
+    '430x90' => array(
+      'desc' => t('Small Content Banner'),
+      'width' => 430,
+      'height' => 90),
+    '400x90' => array(
+      'desc' => t('Small Content Banner'),
+      'width' => 400,
+      'height' => 90),
+    '300x250' => array(
+      'desc' => t('Rectangle'),
+      'width' => 300,
+      'height' => 250),
+    '300x150' => array(
+      'desc' => t('Rectangle, Wide'),
+      'width' => 300,
+      'height' => 150),
+    '300x125' => array(
+      'desc' => t('Mini Rectangle, Wide'),
+      'width' => 300,
+      'height' => 125),
+    '300x70' => array(
+      'desc' => t('Mini Rectangle, Wide'),
+      'width' => 300,
+      'height' => 70),
+    '250x250' => array(
+      'desc' => t('Square'),
+      'width' => 250,
+      'height' => 250),
+    '200x200' => array(
+      'desc' => t('Small Square'),
+      'width' => 200,
+      'height' => 200),
+    '160x160' => array(
+      'desc' => t('Small Square'),
+      'width' => 160,
+      'height' => 160),
+    '336x280' => array(
+      'desc' => t('Rectangle'),
+      'width' => 336,
+      'height' => 280),
+    '336x160' => array(
+      'desc' => t('Rectangle, Wide'),
+      'width' => 336,
+      'height' => 160),
+    '334x100' => array(
+      'desc' => t('Small Rectangle, Wide'),
+      'width' => 334,
+      'height' => 100),
+    '180x300' => array(
+      'desc' => t('Small Rectangle, Tall'),
+      'width' => 334,
+      'height' => 100),
+    '180x150' => array(
+      'desc' => t('Small Rectangle'),
+      'width' => 180,
+      'height' => 150),
+  );
+
+  if (!empty($key)) {
+    if (array_key_exists($key, $ads)) {
+      return $ads[$key];
+    }
+    else {
+      return NULL;
+    }
+  }
+
+  return $ads;
+}
+
+/**
+ * Font options for an ad.
+ *
+ * @return array
+ *   returns an array of fonts.
+ */
+function chitika_ads_get_fonts() {
+  return array(
+    '' => 'Default',
+    'Arial' => 'Arial',
+    'Comic Sans MS' => 'Comic Sans MS',
+    'Georgia' => 'Georgia',
+    'Tahoma' => 'Tahoma',
+    'Times' => 'Times',
+    'Verdana' => 'Verdana',
+    'Courier' => 'Courier',
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function chitika_ads_menu() {
+  $items = array();
+
+  $items['admin/config/services/chitika_ads'] = array(
+    'title' => 'Chitika Ads',
+    'description' => 'Configure your publisher information.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('chitika_ads_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Form for module configuration requesting client and password information.
+ */
+function chitika_ads_form($form, &$form_state) {
+
+  $form['chitika_ads_client'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Chitika Username'),
+    '#default_value' => variable_get('chitika_ads_client', ''),
+    '#description' => t("<p>Please enter your Chitika username (found at the top right of your
+      <a target='_blank' href='https://publishers.chitika.com'>Chitika Publisher Panel</a>
+      , near support and account). <br /> Or, enter your email associated with your Chitika account.
+      (Note: Your email will be replaced with your username after successful login).
+      <br /><br />If you don't have a Chitika account, please <a target='_blank' href='@url1' tabindex='2'>
+      sign up</a> for one.<br />Note: Until your Chitika Account is approved, you will not be able to
+      start earning revenue from your Chitika Ads.
+      </p>",
+      array(
+        '@url1' => url('http://www.chitika.com/publishers/apply?refid=drupalmodule'),
+        '@url2' => url('http://publishers.chitika.com'),
+      )),
+    '#required' => TRUE,
+  );
+
+  $form['chitika_ads_password'] = array(
+    '#type' => 'password',
+    '#title' => t('Chitika Password'),
+    '#default_value' => '',
+    '#required' => TRUE,
+  );
+
+  $form['chitika_ads_next_step_text'] = array(
+    '#markup' => t('Next steps: To configure your Chitika ads, visit the <a href="@url" tabindex="1">Block Overview Page</a>.', array('@url' => url('admin/structure/block'))),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Implements form_validate().
+ */
+function chitika_ads_form_validate($form, &$form_state) {
+  $user = $form_state['values']['chitika_ads_client'];
+  $password = $form_state['values']['chitika_ads_password'];
+
+  $curl = curl_init();
+  if ($curl) {
+    curl_setopt($curl, CURLOPT_URL, 'https://publishers.chitika.com/login?output=json');
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, FALSE);
+    curl_setopt($curl, CURLOPT_SSLVERSION, 3);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($curl, CURLOPT_HEADER, TRUE);
+
+    $data = curl_exec($curl);
+
+    $header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+    $body = substr($data, $header_size);
+    $body = json_decode($body);
+    curl_close($curl);
+
+    preg_match_all('|Set-Cookie: (.*);|U', $data, $matches);
+    $cookies = implode('; ', $matches[1]);
+    $tn = $body->{'csrf_token'}->{'token_name'};
+    $h = $body->{'csrf_token'}->{'hash'};
+    $post_fields = array(
+      'password' => $password,
+      'username' => $user, $tn => $h);
+  }
+  else {
+    form_set_error('', t('Could not connect to chitika.com, please try again later.'));
+  }
+
+  $curl = curl_init();
+  if ($curl) {
+    curl_setopt($curl, CURLOPT_URL, 'https://publishers.chitika.com/validate');
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, FALSE);
+    curl_setopt($curl, CURLOPT_SSLVERSION, 3);
+    curl_setopt($curl, CURLOPT_POST, TRUE);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, $post_fields);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($curl, CURLOPT_COOKIE, $cookies);
+
+    $data = curl_exec($curl);
+    $result = json_decode($data);
+
+  }
+  else {
+    form_set_error('', t('Could not connect to chitika.com, please try again later.'));
+  }
+
+  if (empty($result)) {
+    form_set_error('', t('The authentication server is currently unavailable. Please try again later.'));
+  }
+
+  if (!empty($result) && !$result->{'client'}) {
+    form_set_error('', t('The username or password is invalid.'));
+  }
+
+  if ($result->{'client'}) {
+    $form_state['values']['chitika_ads_client'] = $result->{'client'};
+  }
+}
+
+/**
+ * Implements hook_block_configure().
+ */
+function chitika_ads_block_configure($delta = '') {
+  drupal_add_css('misc/farbtastic/farbtastic.css', array('preprocess' => FALSE));
+  drupal_add_js('misc/farbtastic/farbtastic.js');
+  drupal_add_js(drupal_get_path('module', 'chitika_ads') . '/misc/js/colorpicker.js');
+
+  $form = array();
+  $ad = _chitika_ads_get_block_config($delta);
+  foreach (chitika_ads_ad_formats() as $format => $data) {
+    $ad_sizes[$format] = $format . ' : ' . $data['desc'];
+  }
+
+  $form['chitika_ads_info'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Block description'),
+    '#default_value' => ($ad) ? $ad['chitika_ads_info'] : '',
+    '#maxlength' => 64,
+    '#description' => t('A brief description of your block. Used on the <a href="@url">Block Overview Page</a>.', array('@url' => url('admin/structure/block'))),
+    '#required' => TRUE,
+  );
+
+  $form['chitika_ads_channel'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Channel Tracking'),
+    '#default_value' => $ad ? $ad['chitika_ads_channel'] : CHITIKA_ADS_CHANNEL_DEFAULT,
+    '#description' => l(t('What are Channels?'), 'http://support.chitika.com/customer/portal/articles/62580-tracking-the-performance-of-each-ad-unit', array('attributes' => array('target' => 'blank'))),
+  );
+
+  $form['chitika_ads_size'] = array(
+    '#type' => 'select',
+    '#title' => t('Size'),
+    '#default_value' => $ad ? $ad['chitika_ads_size'] : CHITIKA_ADS_SIZE_DEFAULT,
+    '#options' => $ad_sizes,
+    '#description' => t('Select the ad dimensions you want for this ad.'),
+  );
+
+  $form['chitika_ads_font'] = array(
+    '#type' => 'select',
+    '#title' => t('Font'),
+    '#options' => chitika_ads_get_fonts(),
+    '#default_value' => $ad ? $ad['chitika_ads_font'] : CHITIKA_ADS_FONT_DEFAULT,
+    '#description' => t('The font that will be used for the ad.'),
+  );
+
+  $form['colors'] = array(
+    '#type' => 'fieldset',
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#title' => t('Colors'),
+  );
+
+  $form['colors']['colorpicker'] = array(
+    '#type' => 'markup',
+    '#markup' => "<div id='colorpicker' style='float: right;'></div>",
+  );
+
+  $form['colors']['chitika_ads_background_color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Background Color'),
+    '#default_value' => $ad ? $ad['chitika_ads_background_color'] : CHITIKA_ADS_BACKGROUND_COLOR_DEFAULT,
+    '#description' => t('Specify the background color of the ad.'),
+    '#attributes' => array('class' => array('colorSelector')),
+    '#size' => 7,
+    '#maxlength' => 7,
+  );
+
+  $form['colors']['chitika_ads_link_color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Link Color'),
+    '#default_value' => $ad ? $ad['chitika_ads_link_color'] : CHITIKA_ADS_LINK_COLOR_DEFAULT,
+    '#description' => t('Specify the link color of the ad.'),
+    '#attributes' => array('class' => array('colorSelector')),
+    '#size' => 7,
+    '#maxlength' => 7,
+  );
+
+  $form['colors']['chitika_ads_text_color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Text Color'),
+    '#default_value' => $ad ? $ad['chitika_ads_text_color'] : CHITIKA_ADS_TEXT_COLOR_DEFAULT,
+    '#description' => t('Specify the text color of the ad.'),
+    '#attributes' => array('class' => array('colorSelector')),
+    '#size' => 7,
+    '#maxlength' => 7,
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_form_block_admin_configure_alter().
+ */
+function chitika_ads_form_block_admin_configure_alter(&$form, &$form_state, $form_id) {
+  if ($form['module']['#value'] == 'chitika_ads') {
+    $form['#validate'][] = '_chitika_ads_block_configure_validate';
+  }
+}
+
+/**
+ * Validates chitika_ads_block_configure().
+ */
+function _chitika_ads_block_configure_validate($form, &$form_state) {
+  $colors = array(
+    'chitika_ads_background_color',
+    'chitika_ads_link_color',
+    'chitika_ads_text_color',
+  );
+
+  foreach ($colors as $color) {
+    $hex_value = $form_state['values'][$color];
+    $form_state['values'][$color] = drupal_strtoupper($hex_value);
+
+    if (!preg_match('/#[0-9A-F]{6}/i', $hex_value)) {
+      form_set_error($color, t("Color must be between #000000 and #FFFFFF"));
+    }
+  }
+}
+
+/**
+ * Returns the configuration of the given block.
+ *
+ * @params int $delta
+ *   The block number.
+ *
+ * @return array
+ *   array of the block configuration or FALSE if the block does not exist.
+ */
+function _chitika_ads_get_block_config($delta = 0) {
+  if ($data = variable_get('chitika_ads_ad_block_' . $delta, '')) {
+    return $data;
+  }
+  else {
+    // Defaults.
+    $data = array(
+      'chitika_ads_info' => t('Chitika Ad @delta', array('@delta' => ($delta + 1))),
+      'chitika_ads_channel' => CHITIKA_ADS_CHANNEL_DEFAULT,
+      'chitika_ads_size' => CHITIKA_ADS_SIZE_DEFAULT,
+      'chitika_ads_font' => CHITIKA_ADS_FONT_DEFAULT,
+      'chitika_ads_background_color' => CHITIKA_ADS_BACKGROUND_COLOR_DEFAULT,
+      'chitika_ads_link_color' => CHITIKA_ADS_LINK_COLOR_DEFAULT,
+      'chitika_ads_text_color' => CHITIKA_ADS_TEXT_COLOR_DEFAULT,
+    );
+
+    return $data;
+  }
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function chitika_ads_block_view($delta = '') {
+  $ad = _chitika_ads_get_block_config($delta);
+  $block['content'] = chitika_ads_get_ad($ad);
+
+  return $block;
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function chitika_ads_block_info() {
+  $blocks = array();
+  $max = CHITIKA_ADS_MAXBLOCKS_DEFAULT;
+  for ($count = 0; $count < $max; $count++) {
+    $ad = _chitika_ads_get_block_config($count);
+    $title = $ad['chitika_ads_info'];
+
+    $blocks[$count] = array(
+      'info' => $title,
+      'cache' => DRUPAL_NO_CACHE,
+    );
+  }
+
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function chitika_ads_block_save($delta = '', $edit = array()) {
+  $data = array(
+    'chitika_ads_info' => $edit['chitika_ads_info'],
+    'chitika_ads_channel' => $edit['chitika_ads_channel'],
+    'chitika_ads_size' => $edit['chitika_ads_size'],
+    'chitika_ads_font' => $edit['chitika_ads_font'],
+    'chitika_ads_background_color' => $edit['chitika_ads_background_color'],
+    'chitika_ads_link_color' => $edit['chitika_ads_link_color'],
+    'chitika_ads_text_color' => $edit['chitika_ads_text_color'],
+  );
+
+  variable_set('chitika_ads_ad_block_' . $delta, $data);
+}
+
+/**
+ * Creates the necessary javascript to create a Chitika ad.
+ *
+ * @param array $data
+ *   configuration array of the block.
+ *
+ * @return string
+ *   javascript to display Chitika ad.
+ */
+function chitika_ads_get_ad($data) {
+  if (variable_get('chitika_ads_client') == '') {
+    return l(t('Click here to add your publisher information to the Chitika module'), 'admin/config/services/chitika_ads');
+  }
+
+  $format = chitika_ads_ad_formats($data['chitika_ads_size']);
+
+  $display = '<!-- chitika_ads - Drupal Module -->
+  <div class="chitika_ads-adspace" style="width:' . check_plain($format["width"]) . '; height: ' . check_plain($format["height"]) . '; display: block">
+    <script type="text/javascript">
+        ( function() {
+            if (window.CHITIKA === undefined) {
+              window.CHITIKA = { "units" : [] };
+            };
+            var unit = {
+              "publisher" : "' . check_plain(variable_get("chitika_ads_client")) . '",
+              "width" : ' . check_plain($format["width"]) . ',
+              "height" : ' . check_plain($format["height"]) . ',
+              "type" : "mpu",
+              "sid" : "' . check_plain($data["chitika_ads_channel"]) . '",
+              "color_site_link" : "' . check_plain($data["chitika_ads_link_color"]) . '",
+              "color_title" : "' . check_plain($data["chitika_ads_link_color"]) . '",
+              "color_text" : "' . check_plain($data["chitika_ads_text_color"]) . '",
+              "color_bg" : "' . check_plain($data["chitika_ads_background_color"]) . '",
+              "font_title" : "' . check_plain($data["chitika_ads_font"]) . '",
+              "font_text" : "' . check_plain($data["chitika_ads_font"]) . '",
+              "impsrc" : "drupal"
+            };
+            var placement_id = window.CHITIKA.units.length;
+            window.CHITIKA.units.push(unit);
+            document.write("<div id=\'chitikaAdBlock-" + placement_id + "\'></div>");
+            var s = document.createElement("script");
+            s.type = "text/javascript";
+            s.src = "http://scripts.chitika.net/getads.js";
+            try {
+              document.getElementsByTagName("head")[0].appendChild(s);
+            } catch(e) {
+              document.write(s.outerHTML);
+            }
+        }());
+</script>
+    </div>';
+
+  return $display;
+}

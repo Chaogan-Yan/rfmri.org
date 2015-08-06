@@ -1,0 +1,13 @@
+name = Notifications Mailing List Comment (YAN)
+description = Mailing list features
+package = "Notifications"
+dependencies[] = notifications_content
+dependencies[] = messaging_template
+
+; Based on fserver's work
+; By YAN Chao-Gan, to make a template for comment
+core = "7.x"
+datestamp = "1316092013"
+project = "notifications_ml_Comment_YAN"
+project status url = "www.rfmri.org/yan"
+version = "7.x-1.0"
